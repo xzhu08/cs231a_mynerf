@@ -1,31 +1,16 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[1]:
-
-
 import os
 import sys
 import tensorflow as tf
 import numpy as np
 import imageio
 import json
-
-
-# In[2]:
-
-
 import matplotlib.pyplot as plt
-get_ipython().run_line_magic('matplotlib', 'inline')
-
-
-# In[3]:
 
 
 tf.compat.v1.enable_eager_execution()
-
-
-# In[102]:
 
 
 def LoadData(data_path, json_name, width, height, params = None):
@@ -307,83 +292,3 @@ def TrainNeRF(train_images, train_poses,test_image, test_pose, n_epochs, params)
             plt.title('PNSR')
             plt.show()
     return test_losses, test_psnrs
-
-
-# In[103]:
-
-
-#params = {}
-#params['nerf'] = BuildNeRF(63, 27)
-#params['nerf'] = BuildNeRF(3, 3)
-params['use_encoder'] = True
-params['ray_batch_size'] = 1024
-params['point_batch_size'] = 1024
-params['near'] = 2.0
-params['far'] = 6.0
-params['n_samples'] = 64
-params['pos_encoder'] = lambda x : PositionEncoder(x, 10)
-params['dir_encoder'] = lambda x : PositionEncoder(x, 4)
-params['importance_sampling'] = False
-params['learning_rate'] = 5e-4
-
-data_path = './data/lego/'
-
-width, height = 50, 50
-
-train_images, train_poses = LoadData(data_path, 'transforms_train.json', width, height, params)
-test_images, test_poses = LoadData(data_path, 'transforms_test.json', width, height)
-
-test_id = np.random.randint(test_images.shape[0])
-test_image, test_pose = test_images[test_id], test_poses[test_id]
-
-test_losses, test_psnrs = TrainNeRF(    train_images, train_poses, test_image, test_pose, 500, params)
-
-
-# ## NeRF Graph
-
-# In[106]:
-
-
-dot_img_file = './nerf_graph.png'
-tf.keras.utils.plot_model(params['nerf'], to_file=dot_img_file, show_shapes=True, show_layer_names = False)
-
-
-# In[ ]:
-
-
-test_predicts = [        RenderImage(width, height, test_poses[j], params) for j in range(test_poses.shape[0])    ]
-
-
-# ## Generate Samples
-
-# In[68]:
-
-
-translate = tf.convert_to_tensor([[1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 1, 4], [0, 0, 0, 1]], dtype = tf.float32)
-phi = np.pi/3
-rotX = tf.convert_to_tensor([
-    [1, 0, 0, 0], 
-    [0, np.cos(-phi), -np.sin(-phi), 0], 
-    [0, np.sin(-phi), np.cos(-phi), 0],
-    [0, 0, 0, 1]
-], dtype = tf.float32)
-trans = rotX @ translate
-
-ray_ori, ray_dir = GenerateRays(3, 3, 1, trans)
-positions, directions = GetInputsFromRays(ray_ori, ray_dir, 1, 20, 10, None)
-
-
-# In[69]:
-
-
-get_ipython().run_line_magic('matplotlib', 'inline')
-import matplotlib.pyplot as plt
-fig = plt.figure()
-ax = plt.axes(projection='3d')
-ax.scatter3D(positions[...,0], positions[...,1], positions[...,2]);
-for i in range(directions.shape[0]):
-    start = ray_ori[i]
-    end = ray_ori[i] + directions[i, 0] * 20 * tf.linalg.norm(ray_dir[i])
-    ax.plot3D([start[0], end[0]], [start[1], end[1]], [start[2], end[2]], "red")
-plt.show()
-
