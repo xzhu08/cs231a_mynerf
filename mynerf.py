@@ -13,6 +13,30 @@ import matplotlib.pyplot as plt
 tf.compat.v1.enable_eager_execution()
 
 
+def SaveModel(file_path, params):
+    if not os.path.exists(file_path):
+        os.makedirs(file_path)
+        
+    params['nerf'].save_weights(file_path)
+    
+    saved_params = {k : params[k] for k in params if type(params[k]) in {float, int, bool, str}}
+    with open(os.path.join(file_path, 'params.json'), 'w') as json_file:
+        json.dump(saved_params, json_file)
+
+def LoadModel(file_path):
+    with open(os.path.join(file_path, 'params.json'), 'r') as json_file:
+        params = json.load(json_file)
+        
+    if params['use_encoder']:
+        params['pos_encoder'] = lambda x : PositionEncoder(x, 10)
+        params['dir_encoder'] = lambda x : PositionEncoder(x, 4)
+        params['nerf'] = BuildNeRF(63, 27)
+    else:
+        params['nerf'] = BuildNeRF(3, 3)
+        
+    params['nerf'].load_weights(file_path)
+    return params
+    
 def LoadData(data_path, json_name, width, height, params = None):
     with open(os.path.join(data_path, json_name), 'r') as json_file:
         data = json.load(json_file)
@@ -28,7 +52,7 @@ def LoadData(data_path, json_name, width, height, params = None):
         poses = np.array(poses).astype(np.float32)
     
         images = tf.compat.v1.image.resize_area(images, [height, width]).numpy()
-        camera_angle_x = float(train_data['camera_angle_x'])
+        camera_angle_x = float(data['camera_angle_x'])
         
         if params is not None:
             params['focal_length'] = .5 * width / np.tan(.5 * camera_angle_x)
@@ -44,10 +68,21 @@ def PositionEncoder(x, L):
 
 def GenerateRays(width, height, focal_length, trans_mat):  
     # Generate rays in camera frame.
-    i, j = tf.meshgrid(        tf.range(width, dtype = tf.float32),        tf.range(height, dtype = tf.float32),        indexing = 'xy'    )
+    i, j = tf.meshgrid(\
+        tf.range(width, dtype = tf.float32),\
+        tf.range(height, dtype = tf.float32),\
+        indexing = 'xy'\
+    )
     
     # The depth from pinhole to camera plane is 1.
-    ray_cam = tf.stack(        [            (-0.5 * width + i) / focal_length,            (0.5 * height - j) / focal_length,            -tf.ones_like(i)        ],        axis = -1    )
+    ray_cam = tf.stack(\
+        [\
+            (-0.5 * width + i) / focal_length,\
+            (0.5 * height - j) / focal_length,\
+            -tf.ones_like(i)\
+        ],\
+        axis = -1\
+    )
     
     # Transfer the rays from camera frame to world frame.
     ray_dir = tf.reduce_sum(ray_cam[..., None, :] * trans_mat[:3, :3], axis = -1)
@@ -124,7 +159,10 @@ def BuildNeRF(n_pos, n_dir, n_layers = 8, n_neurons = 256):
     # Construct the Network.
     # 1. Build n_layers MLP with ReLU as activation layer.
     ReLU = tf.keras.layers.ReLU()
-    MLP = lambda input_features, W, act :        tf.keras.layers.Dense(            W, activation = act        )(input_features)
+    MLP = lambda input_features, W, act :\
+        tf.keras.layers.Dense(\
+            W, activation = act\
+        )(input_features)
 
     outputs = inputs_pos
     for i_layer in range(n_layers):
@@ -240,7 +278,9 @@ def RenderImage(width, height, pose, params):
     batch_size = params['ray_batch_size']
     render_results = []
     for i in range(0, rays.shape[0], batch_size):
-        render_results.append(            RenderRays(rays[i:i+batch_size], params)        )
+        render_results.append(\
+            RenderRays(rays[i:i+batch_size], params)\
+        )
     return tf.reshape(tf.concat(render_results, axis = 0), [height, width, 3])
 
 def TrainNeRF(train_images, train_poses,test_image, test_pose, n_epochs, params):
