@@ -293,7 +293,7 @@ def TrainNeRF(train_images, train_poses,test_image, test_pose, n_epochs, params)
     print("----------------Start Training----------------")
     print("W:{0}, H:{1}".format(width, height))
     for k in params:
-        if type(params[k]) in {int, str, bool}:
+        if type(params[k]) in {int, float, str, bool}:
             print('{0}: {1}'.format(k, params[k]))
     
     test_iternum = []
