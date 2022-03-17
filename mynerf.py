@@ -13,20 +13,29 @@ import matplotlib.pyplot as plt
 tf.compat.v1.enable_eager_execution()
 
 
-def SaveModel(file_path, params):
+def SaveModel(file_path, params, losses, psnrs):
     if not os.path.exists(file_path):
         os.makedirs(file_path)
         
     params['nerf'].save_weights(file_path)
     
     saved_params = {k : params[k] for k in params if type(params[k]) in {float, int, bool, str}}
+    data = {}
+    losses = [float(loss) for loss in losses]
+    psnrs = [float(psnr) for psnr in psnrs]
+    data['params'] = saved_params
+    data['losses'] = losses
+    data['psnrs'] = psnrs
     with open(os.path.join(file_path, 'params.json'), 'w') as json_file:
-        json.dump(saved_params, json_file)
+        json.dump(data, json_file)
 
 def LoadModel(file_path):
     with open(os.path.join(file_path, 'params.json'), 'r') as json_file:
-        params = json.load(json_file)
-        
+        data = json.load(json_file)
+    
+    losses = data['losses']
+    psnrs = data['psnrs']
+    params = data['params']
     if params['use_encoder']:
         params['pos_encoder'] = lambda x : PositionEncoder(x, 10)
         params['dir_encoder'] = lambda x : PositionEncoder(x, 4)
@@ -35,7 +44,7 @@ def LoadModel(file_path):
         params['nerf'] = BuildNeRF(3, 3)
         
     params['nerf'].load_weights(file_path)
-    return params
+    return params, losses, psnrs
     
 def LoadData(data_path, json_name, width, height, params = None):
     with open(os.path.join(data_path, json_name), 'r') as json_file:
@@ -311,7 +320,7 @@ def TrainNeRF(train_images, train_poses,test_image, test_pose, n_epochs, params)
         optimizer.apply_gradients(zip(gradients, nerf.trainable_variables))
         print('-----------------epoch: {0} training loss: {1}------------'.format(i, loss), end = '\r')
         
-        if i % 25 == 0 and i > 0:
+        if i % 100 == 0 and i > 0:
             test_predict = RenderImage(width, height, test_pose, params)
             test_loss = tf.reduce_mean(tf.square(test_predict - test_image[...,:-1]))
             test_psnr = -10. * tf.math.log(test_loss) / tf.math.log(10.)
