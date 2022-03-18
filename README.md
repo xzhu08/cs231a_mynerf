@@ -2,10 +2,12 @@
 This repository is for the course project of CS231A: Computer Vision, From 3D Reconstruction to Recognition
 
 ## Output Lego
+![Output](/pics/lego.gif)
 ![Training Process](/pics/lego_nerf_training_results.png)
 ![Examples](/pics/lego_nerf_10x10.png)
 
 ## Output Tank
+![Output](/pics/tank.gif)
 ![Training Process](/pics/tank_nerf_training_results.png)
 ![Examples](/pics/tank_nerf_10x10.png)
 
