@@ -61,7 +61,8 @@ def LoadData(data_path, json_name, width, height, params = None):
         poses = np.array(poses).astype(np.float32)
     
         images = tf.compat.v1.image.resize_area(images, [height, width]).numpy()
-        camera_angle_x = float(data['camera_angle_x'])
+        #camera_angle_x = float(data['camera_angle_x'])
+        camera_angle_x = 0.6911112070083618
         
         if params is not None:
             params['focal_length'] = .5 * width / np.tan(.5 * camera_angle_x)
@@ -308,6 +309,8 @@ def TrainNeRF(train_images, train_poses,test_image, test_pose, n_epochs, params)
     test_iternum = []
     test_losses = []
     test_psnrs = []
+    train_psnrs = []
+    avg_train_psnrs = []
     for i in range(n_epochs):
         # Random select an image to train the model.
         img_i = np.random.randint(train_images.shape[0])
@@ -316,14 +319,19 @@ def TrainNeRF(train_images, train_poses,test_image, test_pose, n_epochs, params)
         with tf.GradientTape() as tape:
             predict = RenderImage(width, height, train_pose, params)
             loss = tf.reduce_mean(tf.square(predict - train_image[...,:-1]))
+            train_psnr = -10. * tf.math.log(loss) / tf.math.log(10.)
+            train_psnrs.append(train_psnr)
         gradients = tape.gradient(loss, nerf.trainable_variables)
         optimizer.apply_gradients(zip(gradients, nerf.trainable_variables))
         print('-----------------epoch: {0} training loss: {1}------------'.format(i, loss), end = '\r')
         
-        if i % 100 == 0 and i > 0:
+        if i % 25 == 0 and i > 0:
             test_predict = RenderImage(width, height, test_pose, params)
             test_loss = tf.reduce_mean(tf.square(test_predict - test_image[...,:-1]))
             test_psnr = -10. * tf.math.log(test_loss) / tf.math.log(10.)
+            avg_train_psnrs.append(tf.reduce_mean(train_psnrs))
+            if len(train_psnrs) > train_images.shape[0]:
+                train_psnrs = []
             
             test_losses.append(test_loss)
             test_psnrs.append(test_psnr)
