@@ -61,8 +61,7 @@ def LoadData(data_path, json_name, width, height, params = None):
         poses = np.array(poses).astype(np.float32)
     
         images = tf.compat.v1.image.resize_area(images, [height, width]).numpy()
-        #camera_angle_x = float(data['camera_angle_x'])
-        camera_angle_x = 0.6911112070083618
+        camera_angle_x = float(data['camera_angle_x'])
         
         if params is not None:
             params['focal_length'] = .5 * width / np.tan(.5 * camera_angle_x)
