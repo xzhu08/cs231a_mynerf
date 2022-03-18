@@ -14,6 +14,7 @@ This repository is for the course project of CS231A: Computer Vision, From 3D Re
 ## Estimated Poses From ColMap
 ![Lego Poses Train](/pics/lego_colmap_train_poses.png)
 ![Lego Poses Test](/pics/lego_colmap_test_poses.png)
+
 ![Tank Poses Train](/pics/tank_colmap_train_poses.png)
 ![Tank Poses Test](/pics/tank_colmap_test_poses.png)
 
